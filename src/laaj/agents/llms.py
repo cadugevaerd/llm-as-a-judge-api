@@ -32,6 +32,10 @@ def get_llm_qwen_3_instruct():
 )
 
 if __name__ == "__main__":
+    import asyncio
     # print(config.OPENROUTER_API)
     llm = get_llm_qwen_3_instruct()
-    print(llm.invoke("Hello, how are you?"))
+    async def main():
+        response = await llm.ainvoke("Hello, how are you?")
+        print(response)
+    asyncio.run(main())

@@ -233,7 +233,7 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -241,7 +241,7 @@
             "description": "Install the latest stable version of LangGraph and all required dependencies, including langchain-openai and python-dotenv. Set up environment variable management for OpenRouter API keys.",
             "dependencies": [],
             "details": "Ensure all packages are installed in the project environment. Verify that environment variables for API keys are loaded securely using python-dotenv.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run a minimal LangGraph workflow to confirm installation and environment variable access."
           },
           {
@@ -251,8 +251,8 @@
             "dependencies": [
               "4.1"
             ],
-            "details": "Model the workflow graph to branch based on whether LLM responses are provided or need to be generated. Ensure nodes for LLM and judge calls are designed for async execution.",
-            "status": "pending",
+            "details": "Model the workflow graph to branch based on whether LLM responses are provided or need to be generated. Ensure nodes for LLM and judge calls are designed for async execution.\n<info added on 2025-08-10T23:24:44.344Z>\n## Detailed Workflow Analysis and Asynchronous Conversion Plan\n\nBased on the detailed analysis, the following improvements will be implemented for the async LangGraph workflow:\n\n### High Priority Asynchronous Changes\n- Convert all node functions (node_llm_a, node_llm_b, node_judge) to async functions\n- Replace all .invoke() calls with .ainvoke() in LLM chains\n- Migrate from StateGraph to AsyncStateGraph for the workflow orchestration\n\n### High Priority Structural Improvements\n- Implement Factory Pattern for LLM instantiation to eliminate redundant if/elif blocks\n- Add support for pre-generated responses through optional fields (pre_generated_response_a/b)\n- Implement proper timeout and cancellation mechanisms using asyncio.timeout()\n\n### Medium Priority Robustness Improvements\n- Add comprehensive error handling with try/except blocks and structured logging\n- Enhance state management with control fields (timestamp, status, error tracking)\n- Implement Pydantic models for judge response parsing and validation\n\n### Medium Priority Performance Optimizations\n- Enable true parallel execution of LLM calls\n- Implement intelligent caching for LLM responses and instances\n\n### Low Priority FastAPI Integration\n- Integrate with FastAPI's BackgroundTasks for proper async handling\n- Add optional streaming support for responses\n\n### Low Priority Configuration Improvements\n- Make LLM chains configurable rather than hardcoded\n- Enhance LangSmith integration with asynchronous context support\n\nInitial implementation will focus on items 1-6 to establish the core asynchronous foundation.\n</info added on 2025-08-10T23:24:44.344Z>\n<info added on 2025-08-11T01:41:04.964Z>\n## Implementation Progress Update for Async LangGraph Workflow\n\n### Completed (85%)\n1. **Factory Pattern** - LLMFactory implemented in `src/laaj/agents/llm_factory.py`\n2. **Pre-generated response support** - Added `pre_generated_response_a/b` fields to BestResponseState\n3. **Branching logic** - Nodes check for pre-generated responses before calling LLMs\n4. **Robust error handling** - Complete try/catch blocks in all nodes with fallbacks\n5. **Structured logging** - Detailed logs at all stages\n6. **Global timeout** - Implemented with asyncio.timeout() in main()\n7. **Response validation** - Sanity checks before returning results\n8. **Async functions** - All nodes (node_llm_a, node_llm_b, node_judge) converted to async\n\n### Critical Pending Items (15%)\n1. **Convert StateGraph to AsyncStateGraph**\n   - Line 240-242: Replace `StateGraph(BestResponseState)` with `AsyncStateGraph(BestResponseState)`\n   - Add import: `from langgraph.graph import AsyncStateGraph`\n\n2. **Convert .invoke() to .ainvoke() in LLM chains**\n   - Line 59: `response = chain.invoke(input={\"topic\": input_topic})` → `response = await chain.ainvoke(input={\"topic\": input_topic})`\n   - Line 115: `response = chain.invoke(input={\"topic\": input_topic})` → `response = await chain.ainvoke(input={\"topic\": input_topic})`\n   - Line 186: `response = chain.invoke(input={...})` → `response = await chain.ainvoke(input={...})`\n\n### Immediate Next Steps\n1. Import AsyncStateGraph\n2. Change StateGraph to AsyncStateGraph (line 240)\n3. Convert all .invoke() calls to await chain.ainvoke()\n4. Test execution to verify complete async functionality\n</info added on 2025-08-11T01:41:04.964Z>",
+            "status": "done",
             "testStrategy": "Create unit tests for workflow branching logic and validate correct node execution paths."
           },
           {
@@ -263,7 +263,7 @@
               "4.2"
             ],
             "details": "Use asyncio for concurrency and ensure that both LLM and judge calls are non-blocking. Handle both real-time generation and usage of pre-generated responses.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock LLM and judge endpoints to test async invocation and response handling."
           },
           {
@@ -274,7 +274,7 @@
               "4.3"
             ],
             "details": "Implement timeout wrappers for async tasks and cancellation hooks for FastAPI background tasks. Ensure that all workflow branches respect timeout and cancellation signals.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate slow or unresponsive LLM/judge calls and verify that timeouts and cancellations are triggered and handled gracefully."
           },
           {
@@ -285,7 +285,7 @@
               "4.4"
             ],
             "details": "Integrate the workflow into the FastAPI app, validate correct execution for both real-time and pre-generated flows, and ensure errors are propagated and logged according to project standards.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run integration tests with concurrent requests, covering success, timeout, cancellation, and error scenarios. Verify correct responses and error handling."
           }
         ]
@@ -300,7 +300,7 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -308,7 +308,7 @@
             "description": "Define the request and response payload schemas for the /api/v1/compare endpoint, ensuring all required fields (including execution_time and timestamp) are present and clearly documented.",
             "dependencies": [],
             "details": "Specify field types, validation rules, and example payloads for both real-time and pre-generated comparison flows. Ensure OpenAPI documentation is updated for discoverability and clarity.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Validate schema correctness using schema validation tools and ensure OpenAPI docs render example requests and responses accurately."
           },
           {
@@ -857,7 +857,7 @@
     ],
     "metadata": {
       "created": "2025-08-10T21:50:09.672Z",
-      "updated": "2025-08-10T23:15:15.421Z",
+      "updated": "2025-08-11T03:28:32.163Z",
       "description": "Tasks for master context"
     }
   }

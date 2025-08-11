@@ -1,42 +1,36 @@
-"""
-Compare router for LLM comparison endpoints.
-"""
-
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import Dict, Any
+import asyncio
 import logging
+from fastapi import APIRouter, HTTPException
+from laaj.api.schemas.compare import CompareRequest, ComparisonResponse
+from laaj.workflow.workflow import main as workflow_main
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
-logger = logging.getLogger("laaj.api.compare")
 
-class CompareRequest(BaseModel):
-    prompt: str
-    model_1: str = "claude-4-sonnet"
-    model_2: str = "google-gemini-2.5-pro"
-
-@router.post("/")
-async def compare_llms(request: CompareRequest) -> Dict[str, Any]:
+@router.post("/", response_model=ComparisonResponse)
+async def compare_models(request: CompareRequest):
     """
-    Compare responses from two different LLMs.
-    
-    Args:
-        request: CompareRequest with prompt and model selections
-        
-    Returns:
-        Dictionary containing comparison results
+    Receives a comparison request, runs the LLM as a Judge workflow,
+    and returns the result.
     """
-    logger.info(f"LLM comparison requested: {request.model_1} vs {request.model_2}")
-    logger.info(f"Prompt length: {len(request.prompt)} characters")
-    
-    # TODO: Implement actual LLM comparison logic using workflow
-    result = {
-        "prompt": request.prompt,
-        "model_1": request.model_1,
-        "model_2": request.model_2,
-        "status": "comparison_pending",
-        "message": "LLM comparison endpoint - implementation pending"
-    }
-    
-    logger.info("LLM comparison response prepared (pending implementation)")
-    return result
+    logger.info(f"Received comparison request: {request.model_dump()}")
+    try:
+        # Run the workflow asynchronously
+        result = await workflow_main(
+            llm_a=request.llm_a,
+            llm_b=request.llm_b,
+            input=request.input,
+            pre_generated_response_a=request.pre_generated_response_a,
+            pre_generated_response_b=request.pre_generated_response_b,
+        )
+        logger.info(f"Workflow finished with result: {result}")
+        return ComparisonResponse(**result)
+    except asyncio.TimeoutError:
+        logger.error("Workflow timed out.")
+        raise HTTPException(status_code=408, detail="Request timed out")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An internal server error occurred: {e}")

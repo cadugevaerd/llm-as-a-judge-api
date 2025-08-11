@@ -1,6 +1,6 @@
-from re import S
+import asyncio
 from laaj.config import OPENROUTER_API
-from laaj.agents.llms import get_llm_qwen_3_instruct, get_llm_gpt_5, get_llm_anthropic_claude_4_sonnet, get_llm_google_gemini_pro
+from laaj.agents.llm_factory import LLMFactory
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
@@ -36,30 +36,37 @@ def chain_laaj(llm):
     return chain
 
 if __name__ == "__main__":
-    tracing_client = LangSmithClient()
-    
-    llm = get_llm_qwen_3_instruct()
-    llm2 = get_llm_gpt_5()
-    llm3 = get_llm_anthropic_claude_4_sonnet()
-    llm_judge = get_llm_google_gemini_pro()
-    
-    chain1 = chain_story(llm)
-    chain2 = chain_story(llm2)
-    chain3 = chain_story(llm3)  
-    
-    # prompt = get_prompt_langsmith("laaj-prompt")
-    # print(prompt)
-    
-    result3 = chain3.invoke(input={"topic":"Amigos"})
-    result2 = chain2.invoke(input={"topic":"Amigos"})
-    
-    judge = chain_laaj(llm_judge)
-    
-    user_question = get_prompt_llm().invoke(input={"topic":"Amigos"})
-    
-    result_judge = judge.invoke(input={"answer_a":result2, "answer_b":result3, "question":user_question})
-    
-    print(result_judge)
-    print(type(result_judge))
+    async def main():
+        tracing_client = LangSmithClient()
+        
+        # Usar factory em vez de imports individuais
+        llm = LLMFactory.create_llm("qwen-3-instruct")
+        llm2 = LLMFactory.create_llm("gpt-5")
+        llm3 = LLMFactory.create_llm("claude-4-sonnet")
+        llm_judge = LLMFactory.create_llm("google-gemini-2.5-pro")
+        
+        chain1 = chain_story(llm)
+        chain2 = chain_story(llm2)
+        chain3 = chain_story(llm3)  
+        
+        # prompt = get_prompt_langsmith("laaj-prompt")
+        # print(prompt)
+        
+        result3 = await chain3.ainvoke(input={"topic":"Amigos"})
+        result2 = await chain2.ainvoke(input={"topic":"Amigos"})
+        
+        judge = chain_laaj(llm_judge)
+        
+        # O prompt em si não precisa ser assíncrono, mas a invocação da chain que o usa, sim.
+        # A linha abaixo foi simplificada.
+        user_question_prompt = get_prompt_llm()
+        user_question = user_question_prompt.format(topic="Amigos")
+
+        result_judge = await judge.ainvoke(input={"answer_a":result2, "answer_b":result3, "question":user_question})
+        
+        print(result_judge)
+        print(type(result_judge))
+
+    asyncio.run(main())
     
     

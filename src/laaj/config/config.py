@@ -14,3 +14,6 @@ LITERAL_MODELS = [
     "claude-4-sonnet",
     "google-gemini-2.5-pro",
 ]
+
+# Configuração de Timeout Global (em segundos)
+WORKFLOW_TIMEOUT_SECONDS = int(os.getenv("WORKFLOW_TIMEOUT_SECONDS", "120"))
