@@ -36,3 +36,22 @@ CLAUDE.md
 # Task files
 # tasks.json
 # tasks/ 
+
+#Json
+*.json
+
+# Gemini Cli
+GEMINI.md
+
+# Virtuak Environments
+.venv/
+
+# Cursor
+.cursor/
+
+# Cache
+*cache
+__pycache__/
+
+# lock files
+*.lock
