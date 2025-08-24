@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  llm-judge-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_PROJECT_NAME=${LANGSMITH_PROJECT_NAME:-llm-as-judge}
+      - WORKFLOW_TIMEOUT_SECONDS=${WORKFLOW_TIMEOUT_SECONDS:-120}
+    env_file:
+      - ../../.env
+    volumes:
+      - logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - llm-judge-network
+
+volumes:
+  logs:
+    driver: local
+
+networks:
+  llm-judge-network:
+    driver: bridge

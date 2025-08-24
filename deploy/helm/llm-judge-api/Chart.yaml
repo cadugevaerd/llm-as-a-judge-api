@@ -1,0 +1,14 @@
+apiVersion: v2
+name: llm-judge-api
+description: A Helm chart for LLM as Judge API
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - llm
+  - judge
+  - api
+  - fastapi
+maintainers:
+  - name: Carlos Araujo
+    email: cadu.gevaerd@gmail.com

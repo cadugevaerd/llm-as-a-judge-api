@@ -1,0 +1,34 @@
+# Values para ambiente de desenvolvimento
+replicaCount: 1
+
+image:
+  repository: llm-judge-api
+  pullPolicy: IfNotPresent
+  tag: "dev"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: llm-judge-api-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+env:
+  WORKFLOW_TIMEOUT_SECONDS: "60"
+  LOG_LEVEL: "DEBUG"

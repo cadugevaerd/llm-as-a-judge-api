@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  llm-judge-api:
+    # Override para desenvolvimento - hot reload
+    build:
+      target: builder
+    volumes:
+      - ../../src:/app/src:ro  # Mount source code for hot reload
+      - logs:/app/logs
+    environment:
+      - PYTHONPATH=/app/src
+      - UVICORN_RELOAD=true
+    command: ["uvicorn", "laaj.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # Desenvolvimento - logs mais verbosos
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

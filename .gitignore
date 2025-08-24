@@ -53,5 +53,7 @@ GEMINI.md
 *cache
 __pycache__/
 
-# lock files
-*.lock
+# lock files (exceto uv.lock que é necessário para deploy)
+package-lock.json
+yarn.lock
+poetry.lock

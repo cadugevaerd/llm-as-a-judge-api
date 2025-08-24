@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "llm-judge-api.fullname" . }}-config
+  labels:
+    {{- include "llm-judge-api.labels" . | nindent 4 }}
+data:
+  WORKFLOW_TIMEOUT_SECONDS: {{ .Values.env.WORKFLOW_TIMEOUT_SECONDS | quote }}
+  LOG_LEVEL: {{ .Values.env.LOG_LEVEL | default "INFO" | quote }}
+  LANGSMITH_PROJECT_NAME: "llm-as-judge"
+  LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
