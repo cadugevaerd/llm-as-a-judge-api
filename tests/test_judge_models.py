@@ -231,7 +231,7 @@ def generate_report(results: List[Dict]):
         fastest = min(successful_models, key=lambda x: x['execution_time'])
         print(f"  • Modelo mais rápido: {fastest['model']} ({fastest['execution_time']:.1f}s)")
         
-        recommended = [r for r in successful_models if 'claude' in r['model'].lower() or 'gpt-4o' in r['model'].lower()]
+        recommended = [r for r in successful_models if 'claude' in r['model'].lower() or 'gpt' in r['model'].lower()]
         if recommended:
             print(f"  • Modelos premium recomendados: {', '.join([r['model'] for r in recommended])}")
 

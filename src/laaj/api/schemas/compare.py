@@ -45,7 +45,14 @@ class ComparisonResponse(BaseModel):
 
 class BatchCompareRequest(BaseModel):
     """Request para comparação em batch."""
-    comparisons: List[CompareRequest] = Field(..., max_items=5, min_items=1, description="Lista de comparações (máximo 5)")
+    comparisons: List[CompareRequest] = Field(..., max_items=5, min_items=2, description="Lista de comparações (mínimo 2, máximo 5)")
+    
+    @field_validator('comparisons')
+    @classmethod
+    def validate_comparisons(cls, v):
+        if len(v) == 1:
+            raise ValueError('Para uma única comparação, use o endpoint /api/v1/compare/ (sem /batch)')
+        return v
 
 class BatchComparisonResult(BaseModel):
     """Resultado individual de uma comparação no batch."""

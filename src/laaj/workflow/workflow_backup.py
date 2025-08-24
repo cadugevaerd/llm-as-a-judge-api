@@ -35,168 +35,111 @@ class ComparisonState(TypedDict):
     better_response: str  # "A", "B", "Empate", ou mensagem de erro
     judge_reasoning: Optional[str]  # Explicação do judge (quando disponível)
 
+# — add these helper functions somewhere above parse_judge_response —
+from typing import Optional
+
+def _extract_preference_from_json(response: dict) -> tuple[str, Optional[str]]:
+    """Extrai preferência de resposta JSON estruturada."""
+    resultado = response["Preference"]
+    logger.info(f"🎯 [PARSE] Preferência detectada (JSON): {resultado}")
+
+    if resultado == 1:
+        better = "A"
+    elif resultado == 2:
+        better = "B"
+    else:
+        better = "Empate"
+
+    judge_reasoning = response.get("Reasoning") or response.get("reasoning")
+    return better, judge_reasoning
+
+def _extract_preference_from_text(text: str) -> tuple[str, str]:
+    """Extrai preferência de texto natural usando regex."""
+    import re
+
+    text_lower = text.lower()
+    reasoning = text[:500] + "..." if len(text) > 500 else text
+
+    # Padrões mais robustos com regex
+    patterns = [
+        (r'\bwinner:\s*assistant\s+a\b', "A"),
+        (r'\bwinner:\s*assistant\s+b\b', "B"),
+        (r'\bassistant\s+a\s+is\s+better\b', "A"),
+        (r'\bassistant\s+b\s+is\s+better\b', "B"),
+        (r'\b(empate|tie)\b', "Empate")
+    ]
+
+    for pattern, result in patterns:
+        if re.search(pattern, text_lower):
+            logger.info(f"🏆 [PARSE] Vencedor detectado: {result}")
+            return result, reasoning
+
+    # Fallback: contagem simples
+    a_count = text_lower.count("assistant a")
+    b_count = text_lower.count("assistant b")
+
+    if a_count > b_count:
+        return "A", reasoning
+    elif b_count > a_count:
+        return "B", reasoning
+    else:
+        return "Empate", reasoning
+
+
 def parse_judge_response(response) -> dict:
     """
     Extrai e processa a resposta do judge, suportando JSON estruturado e texto natural.
-    
+
     Args:
         response: Resposta do modelo judge (dict ou string)
-        
+
     Returns:
         dict: {"better_response": str, "judge_reasoning": str}
     """
     try:
-        # Parse da resposta do judge - pode ser dict ou string
         if response and isinstance(response, dict) and "Preference" in response:
-            # Resposta estruturada (JSON)
-            resultado = response["Preference"]
-            logger.info(f"🎯 [PARSE] Preferência detectada (JSON): {resultado}")
-            
-            # Interpretar resultado
-            if resultado == 1:
-                better = "A"
-                logger.info(f"🏆 [PARSE] Vencedor: Resposta A")
-            elif resultado == 2:
-                better = "B"
-                logger.info(f"🏆 [PARSE] Vencedor: Resposta B")
-            else:
-                better = "Empate"
-                logger.info(f"🤝 [PARSE] Resultado: Empate")
-            
-            # Extrair reasoning se disponível
-            judge_reasoning = response.get("Reasoning", None) or response.get("reasoning", None)
-            
+            better, judge_reasoning = _extract_preference_from_json(response)
             return {
                 "better_response": better,
                 "judge_reasoning": judge_reasoning
             }
+
         elif response and isinstance(response, str):
-            # Resposta em texto natural - fazer parsing manual
-            response_text = response.lower()
-            judge_reasoning = response[:500] + "..." if len(response) > 500 else response
-            
-            logger.info(f"🔍 [PARSE] Analisando resposta em texto: {response[:100]}...")
-            
-            # Procurar por indicadores de preferência
-            if "assistant a" in response_text and "winner:" in response_text and "assistant a" in response_text[response_text.find("winner:"):]:
-                better = "A"
-                logger.info(f"🏆 [PARSE] Vencedor: Resposta A (texto)")
-            elif "assistant b" in response_text and "winner:" in response_text and "assistant b" in response_text[response_text.find("winner:"):]:
-                better = "B"
-                logger.info(f"🏆 [PARSE] Vencedor: Resposta B (texto)")
-            elif "empate" in response_text or "tie" in response_text:
-                better = "Empate"
-                logger.info(f"🤝 [PARSE] Resultado: Empate (texto)")
-            else:
-                # Fallback: tentar detectar qual resposta foi mais elogiada
-                if response_text.count("assistant a") > response_text.count("assistant b"):
-                    better = "A"
-                    logger.info(f"🏆 [PARSE] Vencedor: Resposta A (inferido)")
-                elif response_text.count("assistant b") > response_text.count("assistant a"):
-                    better = "B"
-                    logger.info(f"🏆 [PARSE] Vencedor: Resposta B (inferido)")
-                else:
-                    better = "Empate"
-                    logger.info(f"🤝 [PARSE] Resultado: Empate (não foi possível determinar)")
-            
+            better, judge_reasoning = _extract_preference_from_text(response)
             return {
                 "better_response": better,
                 "judge_reasoning": judge_reasoning
             }
+
         else:
-            # Resposta malformada
             logger.error(f"❌ [PARSE] Resposta malformada do judge: {type(response)} - {response}")
             return {
                 "better_response": "ERRO - Resposta malformada do judge",
                 "judge_reasoning": f"O judge retornou uma resposta inesperada: {response}"
             }
-            
-    except ValueError as e:
-        # Capturar erro de parsing JSON e tentar extrair o resultado do texto do erro
-        error_message = str(e)
-        logger.info(f"🔧 [PARSE] Erro de JSON, tentando extrair resultado do texto: {error_message[:200]}...")
-        
-        # O erro contém o texto da resposta do judge
-        if "Invalid json output:" in error_message:
-            response_text = error_message.split("Invalid json output:", 1)[1].strip()
-            judge_reasoning = response_text[:500] + "..." if len(response_text) > 500 else response_text
-            
-            # Procurar por padrões mais específicos baseado no erro real
-            response_lower = response_text.lower()
-            
-            # Procurar por padrões que indicam conclusão
-            if ("assistant a is better" in response_lower or 
-                "**assistant a is better**" in response_lower or
-                "assistant a provides a more" in response_lower or
-                response_lower.endswith("assistant a is better") or
-                "winner: assistant a" in response_lower):
-                better = "A"
-                logger.info(f"🏆 [PARSE] Vencedor extraído do erro: Resposta A")
-            elif ("assistant b is better" in response_lower or 
-                  "**assistant b is better**" in response_lower or
-                  "assistant b provides a more" in response_lower or
-                  response_lower.endswith("assistant b is better") or
-                  "winner: assistant b" in response_lower or
-                  "assistant b provides the better response" in response_lower):
-                better = "B" 
-                logger.info(f"🏆 [PARSE] Vencedor extraído do erro: Resposta B")
-            elif ("both responses" in response_lower and ("equal" in response_lower or "tie" in response_lower)) or "empate" in response_lower:
-                better = "Empate"
-                logger.info(f"🤝 [PARSE] Resultado extraído do erro: Empate")
-            else:
-                # Buscar por conclusões no final do texto (últimas 3 linhas)
-                lines = response_text.strip().split('\n')
-                last_lines = ' '.join(lines[-3:]).lower() if len(lines) >= 3 else response_lower
-                
-                if ("assistant a" in last_lines and ("better" in last_lines or "more" in last_lines)) and "assistant b" not in last_lines:
-                    better = "A"
-                    logger.info(f"🏆 [PARSE] Vencedor inferido das linhas finais: Resposta A")
-                elif ("assistant b" in last_lines and ("better" in last_lines or "more" in last_lines)) and "assistant a" not in last_lines:
-                    better = "B"
-                    logger.info(f"🏆 [PARSE] Vencedor inferido das linhas finais: Resposta B")
-                else:
-                    # Fallback: buscar palavras-chave de qualidade
-                    a_score = 0
-                    b_score = 0
-                    
-                    # Contar indicadores de qualidade após "assistant a"
-                    a_indicators = ["assistant a provides a more", "assistant a is more", "assistant a better", 
-                                   "assistant a gives a more", "assistant a offers a more"]
-                    b_indicators = ["assistant b provides a more", "assistant b is more", "assistant b better",
-                                   "assistant b gives a more", "assistant b offers a more"]
-                    
-                    for indicator in a_indicators:
-                        if indicator in response_lower:
-                            a_score += 1
-                    for indicator in b_indicators:
-                        if indicator in response_lower:
-                            b_score += 1
-                    
-                    if a_score > b_score:
-                        better = "A"
-                        logger.info(f"🏆 [PARSE] Vencedor por indicadores: Resposta A (score: {a_score} vs {b_score})")
-                    elif b_score > a_score:
-                        better = "B"
-                        logger.info(f"🏆 [PARSE] Vencedor por indicadores: Resposta B (score: {b_score} vs {a_score})")
-                    else:
-                        better = "Empate"
-                        logger.info(f"🤝 [PARSE] Não foi possível determinar vencedor - considerado Empate")
-            
-        else:
-            # Qualquer coisa que não seja JSON estruturado é erro
-            logger.error(f"❌ [PARSE] Judge não retornou JSON estruturado esperado: {type(response)}")
-            logger.error(f"❌ [PARSE] Resposta recebida: {str(response)[:200]}...")
-            
-            return {
-                "better_response": "ERRO - Judge não retornou JSON estruturado",
-                "judge_reasoning": f"Esperado JSON com campo 'Preference', recebido: {type(response)} - {str(response)[:200]}..."
-            }
-            
+
+    except (ValueError, KeyError) as e:
+        logger.error(f"❌ [PARSE] Erro no parsing: {str(e)}")
+        # Tentar extrair do texto do erro se disponível
+        if hasattr(e, 'args') and e.args:
+            error_text = str(e.args[0])
+            if "Invalid json output:" in error_text:
+                text = error_text.split("Invalid json output:", 1)[1].strip()
+                better, reasoning = _extract_preference_from_text(text)
+                return {
+                    "better_response": better,
+                    "judge_reasoning": reasoning
+                }
+
+        return {
+            "better_response": "ERRO - Falha no parsing",
+            "judge_reasoning": str(e)
+        }
+
     except Exception as e:
         error_type = type(e).__name__
         logger.error(f"❌ [PARSE] Erro no parsing ({error_type}): {str(e)}")
-        logger.error(f"❌ [PARSE] Resposta que causou erro: {str(response)[:200]}...")
-        
+
         return {
             "better_response": f"ERRO - Falha no parsing: {error_type}",
             "judge_reasoning": f"Erro ao processar resposta do judge: {str(e)}"
@@ -239,9 +182,12 @@ async def node_judge(state: ComparisonState):
             return parse_judge_response(response)
                 
         except ValueError as e:
-            # Para ValueError (erros de JSON), também usar a função de parsing
-            logger.info(f"🔧 [JUDGE] Erro de JSON capturado, delegando para parse_judge_response...")
-            return parse_judge_response(e)
+            # Tratar erro de parsing JSON
+            logger.error(f"❌ [JUDGE] Erro de parsing JSON: {str(e)}")
+            return {
+                "better_response": "ERRO - Falha no parsing JSON",
+                "judge_reasoning": f"Resposta do judge não pôde ser parseada: {str(e)}"
+            }
         
         except Exception as e:
             # Outros erros do LLM/chain - tratamento específico do nó judge

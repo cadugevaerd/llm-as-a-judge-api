@@ -18,8 +18,15 @@ def chain_laaj(llm):
     Returns:
         Chain configurada com o prompt 'laaj-prompt' do LangSmith
     """
-    langsmith_client = Client(api_key=os.getenv("LANGSMITH_API_KEY"))
-    prompt = langsmith_client.pull_prompt(PROMPT_LAAJ)
+    langsmith_client = Client()  # permite fallback para variáveis de ambiente suportadas
+    try:
+        prompt = langsmith_client.pull_prompt(PROMPT_LAAJ)
+    except Exception as e:
+        raise RuntimeError(
+            f"Falha ao carregar o prompt '{PROMPT_LAAJ}' no LangSmith. "
+            "Verifique as variáveis LANGSMITH_API_KEY/LANGCHAIN_API_KEY, permissões do projeto "
+            "e se o prompt existe e está acessível."
+        ) from e
     chain = prompt | llm
     return chain
     

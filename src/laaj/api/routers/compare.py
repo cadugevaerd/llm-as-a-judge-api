@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import ORJSONResponse
 from laaj.api.schemas import CompareRequest, ComparisonResponse, BatchCompareRequest, BatchComparisonResponse, BatchComparisonResult
@@ -54,7 +55,6 @@ async def compare_models_batch(request: BatchCompareRequest):
     Compara uma lista de respostas pré-geradas usando um modelo judge em paralelo.
     Usa LangChain abatch() para processamento eficiente e não gera novas respostas.
     """
-    import time
     start_time = time.time()
     
     logger.info(f"🔥 [API-BATCH] Recebida requisição batch com {len(request.comparisons)} comparações")
@@ -67,9 +67,12 @@ async def compare_models_batch(request: BatchCompareRequest):
         # Aplicar timeout de 90 segundos para batch (mais que individual)
         async with asyncio.timeout(90):
             
-            # Executar processamento batch usando workflow
+            # Executar processamento batch usando workflow com controle de concorrência
             logger.info(f"🚀 [API-BATCH] Iniciando processamento paralelo...")
-            batch_results = await batch_judge_processing(request.comparisons)
+            batch_results = await batch_judge_processing(
+                comparisons=request.comparisons,
+                max_concurrent=10  # Limite de 10 requisições concorrentes
+            )
             
             # Calcular estatísticas de performance
             model_a_wins = 0

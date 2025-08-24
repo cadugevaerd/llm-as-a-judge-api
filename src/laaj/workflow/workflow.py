@@ -264,12 +264,20 @@ async def node_judge(state: ComparisonState):
         }
         
         
-async def batch_judge_processing(comparisons: List[CompareRequest]) -> List[BatchComparisonResult]:
+async def batch_judge_processing(
+    comparisons: List[CompareRequest], 
+    max_concurrent: Optional[int] = 10
+) -> List[BatchComparisonResult]:
     """
     Processa múltiplas comparações em paralelo usando abatch() do LangChain.
     Erros individuais não afetam outras comparações do batch.
+    
+    Args:
+        comparisons: Lista de comparações a processar
+        max_concurrent: Número máximo de requisições concorrentes
     """
     logger.info(f"🔥 [BATCH] Iniciando processamento batch de {len(comparisons)} comparações")
+    logger.info(f"🔧 [BATCH] Concorrência máxima: {max_concurrent}")
 
     try:
         # 1. Preparar inputs batch (mesmo formato do input individual)
@@ -287,8 +295,11 @@ async def batch_judge_processing(comparisons: List[CompareRequest]) -> List[Batc
         
         logger.info(f"⚙️ [BATCH] Executando processamento paralelo...")
 
-        # 3. Executar batch
-        batch_results = await chain.abatch(batch_inputs)
+        # 3. Executar batch com controle de concorrência
+        batch_results = await chain.abatch(
+            batch_inputs,
+            config={"max_concurrency": max_concurrent}
+        )
         
         logger.info(f"📊 [BATCH] Processamento batch concluído, processando {len(batch_results)} resultados")
 
