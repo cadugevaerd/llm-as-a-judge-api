@@ -24,6 +24,15 @@ node_modules/
 # OS specific
 .DS_Store
 
+# AI/LLM Assistants
+# Claude Code
+.claude/
+CLAUDE.md
+# Gemini CLI
+.gemini/
+# Task Master AI
+.taskmaster/
+
 # Task files
 # tasks.json
 # tasks/ 

@@ -37,8 +37,7 @@ class ComparisonState(TypedDict):
 
 def parse_judge_response(response) -> dict:
     """
-    Extrai e processa a resposta do judge, esperando JSON estruturado.
-    Se não conseguir fazer parsing, retorna erro sem fallbacks.
+    Extrai e processa a resposta do judge, suportando JSON estruturado e texto natural.
     
     Args:
         response: Resposta do modelo judge (dict ou string)
@@ -47,8 +46,9 @@ def parse_judge_response(response) -> dict:
         dict: {"better_response": str, "judge_reasoning": str}
     """
     try:
-        # Só aceita resposta JSON estruturada com "Preference"
+        # Parse da resposta do judge - pode ser dict ou string
         if response and isinstance(response, dict) and "Preference" in response:
+            # Resposta estruturada (JSON)
             resultado = response["Preference"]
             logger.info(f"🎯 [PARSE] Preferência detectada (JSON): {resultado}")
             
@@ -57,7 +57,7 @@ def parse_judge_response(response) -> dict:
                 better = "A"
                 logger.info(f"🏆 [PARSE] Vencedor: Resposta A")
             elif resultado == 2:
-                better = "B" 
+                better = "B"
                 logger.info(f"🏆 [PARSE] Vencedor: Resposta B")
             else:
                 better = "Empate"
@@ -218,11 +218,11 @@ async def node_judge(state: ComparisonState):
         logger.info(f"📝 [JUDGE] Resposta A: {len(response_a)} chars")
         logger.info(f"📝 [JUDGE] Resposta B: {len(response_b)} chars")
         
-        # Usar modelo judge (Llama 4 Maverick como padrão - melhor performance)
+        # Usar modelo judge (Claude 4 Sonnet como padrão)
         logger.info(f"🔍 [JUDGE] Carregando modelo judge...")
         
         try:
-            judge_llm = LLMFactory.create_llm("llama-4-maverick")
+            judge_llm = LLMFactory.create_llm("claude-4-sonnet")
             chain = chain_laaj(judge_llm)
             logger.info(f"⚙️ [JUDGE] Invocando modelo judge para comparação...")
             
@@ -282,7 +282,7 @@ async def batch_judge_processing(comparisons: List[CompareRequest]) -> List[Batc
             })
 
         # 2. Usar chain.abatch() para processamento paralelo
-        judge_llm = LLMFactory.create_llm("llama-4-maverick")
+        judge_llm = LLMFactory.create_llm("claude-4-sonnet")
         chain = chain_laaj(judge_llm)
         
         logger.info(f"⚙️ [BATCH] Executando processamento paralelo...")

@@ -20,7 +20,9 @@ from laaj.agents.llms import (
     get_llm_anthropic_claude_4_sonnet,
     get_llm_google_gemini_pro, 
     get_llm_gpt_5,
-    get_llm_qwen_3_instruct
+    get_llm_qwen_3_instruct,
+    get_llm_deepseek,
+    get_llm_llama_4_maverick
 )
 from laaj.config import LITERAL_MODELS
 
@@ -46,6 +48,9 @@ class LLMFactory:
     # - str: nome do modelo (ex: "claude-4-sonnet")  
     # - Callable[[], ChatOpenAI]: função que não recebe parâmetros e retorna ChatOpenAI
     _models: Dict[str, Callable[[], ChatOpenAI]] = {
+        # Modelo Llama 4 Maverick - Principal (melhor performance no teste)
+        "llama-4-maverick": get_llm_llama_4_maverick,
+        
         # Modelo Claude 4 Sonnet da Anthropic
         "claude-4-sonnet": get_llm_anthropic_claude_4_sonnet,
         
@@ -57,6 +62,9 @@ class LLMFactory:
         
         # Modelo Qwen 3 Instruct
         "qwen-3-instruct": get_llm_qwen_3_instruct,
+        
+        # Modelo DeepSeek
+        "deepseek": get_llm_deepseek
     }
     
     @classmethod

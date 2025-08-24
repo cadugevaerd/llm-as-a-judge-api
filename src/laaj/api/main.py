@@ -7,6 +7,7 @@ This module contains the FastAPI application instance and router configuration.
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 from laaj.api.routers import compare, models, health
 
 # Configure logging
@@ -22,6 +23,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    default_response_class=ORJSONResponse,  # Use ORJSON para UTF-8 adequado
 )
 
 # Configure CORS middleware
@@ -54,4 +56,12 @@ async def root():
     
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        # Configurações para UTF-8 adequado
+        access_log=True,
+        use_colors=True,
+        server_header=False
+    )
