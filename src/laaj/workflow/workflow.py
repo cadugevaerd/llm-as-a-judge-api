@@ -277,7 +277,14 @@ async def batch_judge_processing(
         max_concurrent: Número máximo de requisições concorrentes
     """
     logger.info(f"🔥 [BATCH] Iniciando processamento batch de {len(comparisons)} comparações")
-    logger.info(f"🔧 [BATCH] Concorrência máxima: {max_concurrent}")
+    
+    # Computar concorrência efetiva segura
+    if max_concurrent is None or max_concurrent <= 0:
+        effective_concurrency = 1  # Default seguro
+    else:
+        effective_concurrency = min(max_concurrent, len(comparisons))  # Cap no número de itens
+    
+    logger.info(f"🔧 [BATCH] Concorrência efetiva: {effective_concurrency} (input: {max_concurrent})")
 
     try:
         # 1. Preparar inputs batch (mesmo formato do input individual)
@@ -295,10 +302,11 @@ async def batch_judge_processing(
         
         logger.info(f"⚙️ [BATCH] Executando processamento paralelo...")
 
-        # 3. Executar batch com controle de concorrência
+        # 3. Executar batch com controle de concorrência e return_exceptions=True
         batch_results = await chain.abatch(
             batch_inputs,
-            config={"max_concurrency": max_concurrent}
+            config={"max_concurrency": effective_concurrency},
+            return_exceptions=True
         )
         
         logger.info(f"📊 [BATCH] Processamento batch concluído, processando {len(batch_results)} resultados")
