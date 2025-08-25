@@ -53,10 +53,10 @@ def parse_judge_response(response) -> dict:
             logger.info(f"🎯 [PARSE] Preferência detectada (JSON): {resultado}")
             
             # Interpretar resultado
-            if resultado == 1:
+            if str(resultado) == '1':
                 better = "A"
                 logger.info(f"🏆 [PARSE] Vencedor: Resposta A")
-            elif resultado == 2:
+            elif str(resultado) == '2':
                 better = "B" 
                 logger.info(f"🏆 [PARSE] Vencedor: Resposta B")
             else:

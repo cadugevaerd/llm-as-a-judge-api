@@ -13,10 +13,11 @@ spec:
       {{- include "llm-judge-api.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        rollout-timestamp: {{ now | quote }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "llm-judge-api.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
