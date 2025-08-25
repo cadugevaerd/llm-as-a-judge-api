@@ -1,0 +1,46 @@
+# Use Python 3.13 slim image for x64
+FROM --platform=linux/amd64 python:3.13-slim
+
+# Install uv for x64
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install system dependencies optimized for x64
+RUN apt-get update && apt-get install -y \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create necessary directories
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+
+# Change the working directory to `/app`
+WORKDIR /app
+
+# Copy the lockfile and pyproject.toml into the image
+COPY uv.lock pyproject.toml ./
+
+# Copy source code
+COPY src/ ./src/
+
+# Install dependencies with x64 optimizations
+RUN uv sync --frozen --no-cache
+
+# Change ownership to appuser
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')" || exit 1
+
+# Run the FastAPI application by default
+# Note: "app.main:app" should match your project structure
+CMD ["/app/.venv/bin/fastapi", "run", "src/laaj/api/main.py", "--port", "8000", "--host", "0.0.0.0"]

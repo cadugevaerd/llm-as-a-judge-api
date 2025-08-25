@@ -17,6 +17,9 @@ class CompareRequest(BaseModel):
     model_a_name: Optional[str] = Field(None, description="Nome do modelo que gerou response_a (opcional, apenas para referência)")
     model_b_name: Optional[str] = Field(None, description="Nome do modelo que gerou response_b (opcional, apenas para referência)")
     
+    # Modelo judge a ser usado na comparação
+    judge_model: Optional[str] = Field(None, description="ID do modelo judge para fazer a comparação (opcional, usa modelo padrão se não especificado)")
+    
     @field_validator('input', 'response_a', 'response_b')
     @classmethod
     def validate_non_empty_strings(cls, v):
@@ -39,6 +42,7 @@ class ComparisonResponse(BaseModel):
     # Metadados
     model_a_name: Optional[str] = Field(None, description="Nome do modelo A (se fornecido na requisição)")
     model_b_name: Optional[str] = Field(None, description="Nome do modelo B (se fornecido na requisição)")
+    judge_model_used: str = Field(..., description="ID do modelo judge utilizado na comparação")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Timestamp da comparação")
     execution_time: float = Field(..., description="Tempo de execução em segundos", ge=0)
     
@@ -62,6 +66,7 @@ class BatchComparisonResult(BaseModel):
     response_b: str = Field(..., description="Resposta B que foi comparada")
     model_a_name: Optional[str] = Field(None, description="Nome do modelo A")
     model_b_name: Optional[str] = Field(None, description="Nome do modelo B")
+    judge_model_used: str = Field(..., description="ID do modelo judge utilizado na comparação")
     better_response: str = Field(..., description="Qual resposta foi considerada melhor")
     judge_reasoning: Optional[str] = Field(None, description="Explicação do juiz")
 

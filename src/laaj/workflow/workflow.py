@@ -14,6 +14,7 @@ import logging
 import time
 
 from laaj.agents import LLMFactory, chain_laaj
+from laaj.config.models_loader import models_loader
 
 # Configurar logging
 logging.basicConfig(
@@ -30,6 +31,7 @@ class ComparisonState(TypedDict):
     response_b: str  # Resposta pré-gerada B (obrigatória)
     model_a_name: Optional[str]  # Nome do modelo A (opcional, apenas referência)
     model_b_name: Optional[str]  # Nome do modelo B (opcional, apenas referência)
+    judge_model_id: Optional[str]  # ID do modelo judge a usar (opcional)
     
     # Resultado do judge
     better_response: str  # "A", "B", "Empate", ou mensagem de erro
@@ -218,11 +220,12 @@ async def node_judge(state: ComparisonState):
         logger.info(f"📝 [JUDGE] Resposta A: {len(response_a)} chars")
         logger.info(f"📝 [JUDGE] Resposta B: {len(response_b)} chars")
         
-        # Usar modelo judge (Llama 4 Maverick como padrão - melhor performance)
-        logger.info(f"🔍 [JUDGE] Carregando modelo judge...")
+        # Determinar modelo judge a usar (do estado ou padrão)
+        judge_model_id = state.get("judge_model_id") or models_loader.get_default_model()
+        logger.info(f"🔍 [JUDGE] Carregando modelo judge: {judge_model_id}")
         
         try:
-            judge_llm = LLMFactory.create_llm("llama-4-maverick")
+            judge_llm = LLMFactory.create_llm(judge_model_id)
             chain = chain_laaj(judge_llm)
             logger.info(f"⚙️ [JUDGE] Invocando modelo judge para comparação...")
             
@@ -266,7 +269,8 @@ async def node_judge(state: ComparisonState):
         
 async def batch_judge_processing(
     comparisons: List[CompareRequest], 
-    max_concurrent: Optional[int] = 10
+    max_concurrent: Optional[int] = 10,
+    judge_model_id: Optional[str] = None
 ) -> List[BatchComparisonResult]:
     """
     Processa múltiplas comparações em paralelo usando abatch() do LangChain.
@@ -275,8 +279,13 @@ async def batch_judge_processing(
     Args:
         comparisons: Lista de comparações a processar
         max_concurrent: Número máximo de requisições concorrentes
+        judge_model_id: ID do modelo judge a usar (opcional, usa padrão se None)
     """
     logger.info(f"🔥 [BATCH] Iniciando processamento batch de {len(comparisons)} comparações")
+    
+    # Determinar modelo judge a usar (parâmetro ou padrão)
+    effective_judge_model = judge_model_id or models_loader.get_default_model()
+    logger.info(f"🔍 [BATCH] Modelo judge selecionado: {effective_judge_model}")
     
     # Computar concorrência efetiva segura
     if max_concurrent is None or max_concurrent <= 0:
@@ -296,8 +305,8 @@ async def batch_judge_processing(
                 "answer_b": comp.response_b
             })
 
-        # 2. Usar chain.abatch() para processamento paralelo
-        judge_llm = LLMFactory.create_llm("llama-4-maverick")
+        # 2. Usar chain.abatch() para processamento paralelo com modelo selecionado
+        judge_llm = LLMFactory.create_llm(effective_judge_model)
         chain = chain_laaj(judge_llm)
         
         logger.info(f"⚙️ [BATCH] Executando processamento paralelo...")
@@ -327,7 +336,8 @@ async def batch_judge_processing(
                     model_a_name=comparison.model_a_name,
                     model_b_name=comparison.model_b_name,
                     better_response=parsed_result["better_response"],
-                    judge_reasoning=parsed_result["judge_reasoning"]
+                    judge_reasoning=parsed_result["judge_reasoning"],
+                    judge_model_used=effective_judge_model
                 ))
                 
                 # Contar sucessos (não considerar ERROs como sucesso)
@@ -348,7 +358,8 @@ async def batch_judge_processing(
                     model_a_name=comparison.model_a_name,
                     model_b_name=comparison.model_b_name,
                     better_response=f"ERRO - Falha no processamento individual",
-                    judge_reasoning=f"Erro durante processamento da comparação: {error_type} - {str(e)}"
+                    judge_reasoning=f"Erro durante processamento da comparação: {error_type} - {str(e)}",
+                    judge_model_used=effective_judge_model
                 ))
 
         logger.info(f"🏁 [BATCH] Processamento concluído: {successful_count}/{len(comparisons)} sucessos")
@@ -369,7 +380,8 @@ async def batch_judge_processing(
                 model_a_name=comparison.model_a_name,
                 model_b_name=comparison.model_b_name,
                 better_response=f"ERRO - Falha crítica no batch",
-                judge_reasoning=f"Erro crítico durante processamento batch: {error_type} - {str(e)}"
+                judge_reasoning=f"Erro crítico durante processamento batch: {error_type} - {str(e)}",
+                judge_model_used=effective_judge_model
             ))
         
         return error_results
@@ -380,6 +392,7 @@ async def main(
     response_b: str,
     model_a_name: Optional[str] = None,
     model_b_name: Optional[str] = None,
+    judge_model_id: Optional[str] = None,
     timeout_seconds: int = 30
 ) -> dict:
     """
@@ -391,6 +404,7 @@ async def main(
         response_b: Resposta pré-gerada B  
         model_a_name: Nome do modelo A (opcional)
         model_b_name: Nome do modelo B (opcional)
+        judge_model_id: ID do modelo judge a usar (opcional, usa padrão se None)
         timeout_seconds: Timeout em segundos
     
     Returns:
@@ -419,6 +433,7 @@ async def main(
                 response_b=response_b.strip(),
                 model_a_name=model_a_name,
                 model_b_name=model_b_name,
+                judge_model_id=judge_model_id,
                 better_response="",  # Será preenchido pelo judge
                 judge_reasoning=None
             )
@@ -426,6 +441,9 @@ async def main(
             # Executar judge
             logger.info(f"🚀 [MAIN] Executando comparação...")
             judge_result = await node_judge(state)
+            
+            # Determinar modelo judge utilizado (para log na resposta)
+            effective_judge_model = judge_model_id or models_loader.get_default_model()
             
             # Mesclar resultado com estado original
             final_result = {
@@ -436,6 +454,7 @@ async def main(
                 "model_b_name": model_b_name,
                 "better_response": judge_result["better_response"],
                 "judge_reasoning": judge_result.get("judge_reasoning"),
+                "judge_model_used": effective_judge_model,
                 "execution_time": time.time() - start_time
             }
             
@@ -451,6 +470,9 @@ async def main(
         
         logger.error(f"⏰ [MAIN] TIMEOUT: {error_msg}")
         
+        # Determinar modelo judge que seria usado (para completar a resposta)
+        effective_judge_model = judge_model_id or models_loader.get_default_model()
+        
         return {
             "input": input_question,
             "response_a": response_a,
@@ -459,12 +481,16 @@ async def main(
             "model_b_name": model_b_name,
             "better_response": f"TIMEOUT - Excedeu {timeout_seconds}s",
             "judge_reasoning": f"A comparação foi interrompida por timeout após {elapsed_time:.2f}s",
+            "judge_model_used": effective_judge_model,
             "execution_time": elapsed_time
         }
     
     except ValueError as e:
         elapsed_time = time.time() - start_time
         logger.error(f"❌ [MAIN] Erro de validação: {str(e)}")
+        
+        # Determinar modelo judge que seria usado (para completar a resposta)
+        effective_judge_model = judge_model_id or models_loader.get_default_model()
         
         return {
             "input": input_question or "",
@@ -474,6 +500,7 @@ async def main(
             "model_b_name": model_b_name,
             "better_response": f"ERRO - Validação falhou",
             "judge_reasoning": f"Erro de validação de entrada: {str(e)}",
+            "judge_model_used": effective_judge_model,
             "execution_time": elapsed_time
         }
     

@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  llm-judge-api-x64:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile-x64
+      platforms:
+        - linux/amd64
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_PROJECT_NAME=${LANGSMITH_PROJECT_NAME:-llm-as-judge}
+      - WORKFLOW_TIMEOUT_SECONDS=${WORKFLOW_TIMEOUT_SECONDS:-120}
+    env_file:
+      - ../../.env
+    volumes:
+      - logs:/app/logs
+      - models_cache:/app/.cache  # Cache para modelos LLM
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - llm-judge-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    # Configurações específicas para x64
+    platform: linux/amd64
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /app/logs:size=200m
+
+volumes:
+  logs:
+    driver: local
+  models_cache:
+    driver: local
+
+networks:
+  llm-judge-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

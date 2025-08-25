@@ -7,5 +7,6 @@ metadata:
 data:
   WORKFLOW_TIMEOUT_SECONDS: {{ .Values.env.WORKFLOW_TIMEOUT_SECONDS | quote }}
   LOG_LEVEL: {{ .Values.env.LOG_LEVEL | default "INFO" | quote }}
-  LANGSMITH_PROJECT_NAME: "llm-as-judge"
-  LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
+  LANGSMITH_PROJECT_NAME: {{ .Values.env.LANGSMITH_PROJECT_NAME | default "llm-as-judge-study" | quote }}
+  LANGSMITH_TRACING: {{ .Values.env.LANGSMITH_TRACING | default "true" | quote }}
+  LANGSMITH_ENDPOINT: {{ .Values.env.LANGSMITH_ENDPOINT | default "https://api.smith.langchain.com" | quote }}

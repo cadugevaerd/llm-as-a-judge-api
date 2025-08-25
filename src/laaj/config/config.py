@@ -10,6 +10,8 @@ env_path = project_root / ".env"
 load_dotenv(dotenv_path=env_path)
 
 OPENROUTER_API = os.getenv("OPENROUTER_API_KEY")
+ANTHROPIC_API = os.getenv("ANTHROPIC_API_KEY")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 LITERAL_MODELS = [
     "llama-4-maverick",  # Modelo principal - melhor performance no teste
     "claude-4-sonnet",

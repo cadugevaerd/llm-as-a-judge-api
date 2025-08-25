@@ -126,8 +126,13 @@ affinity: {}
 env:
   WORKFLOW_TIMEOUT_SECONDS: "120"
   LOG_LEVEL: "INFO"
+  LANGSMITH_PROJECT_NAME: "llm-as-judge-study"
+  LANGSMITH_TRACING: "true"
+  LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
 
 # Secrets - valores devem ser fornecidos durante o deploy
 secrets:
-  OPENROUTER_API_KEY: ""  # Obrigatório
-  LANGSMITH_API_KEY: ""   # Opcional
+  OPENROUTER_API_KEY: ""    # Obrigatório
+  LANGSMITH_API_KEY: ""     # Opcional
+  ANTHROPIC_API_KEY: ""     # Opcional
+  MISTRAL_API_KEY: ""       # Opcional

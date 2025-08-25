@@ -3,8 +3,9 @@ import logging
 import time
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import ORJSONResponse
-from laaj.api.schemas import CompareRequest, ComparisonResponse, BatchCompareRequest, BatchComparisonResponse, BatchComparisonResult
+from laaj.api.schemas.compare import CompareRequest, ComparisonResponse, BatchCompareRequest, BatchComparisonResponse, BatchComparisonResult
 from laaj.workflow.workflow import main as workflow_main, batch_judge_processing
+from laaj.config.models_loader import models_loader
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,10 +19,14 @@ async def compare_models(request: CompareRequest):
     Compara duas respostas pré-geradas usando um modelo judge.
     Não gera novas respostas - apenas avalia respostas já existentes.
     """
+    # Determinar qual modelo judge usar
+    judge_model_id = request.judge_model or models_loader.get_default_model()
+    
     logger.info(f"Received comparison request for pre-generated responses")
     logger.info(f"Input: {request.input[:100]}...")
     logger.info(f"Response A: {len(request.response_a)} chars")
     logger.info(f"Response B: {len(request.response_b)} chars")
+    logger.info(f"Judge model: {judge_model_id}")
     
     try:
         # Executar workflow simplificado (apenas judge)
@@ -31,6 +36,7 @@ async def compare_models(request: CompareRequest):
             response_b=request.response_b,
             model_a_name=request.model_a_name,
             model_b_name=request.model_b_name,
+            judge_model_id=judge_model_id,
             timeout_seconds=30
         )
         
@@ -67,11 +73,16 @@ async def compare_models_batch(request: BatchCompareRequest):
         # Aplicar timeout de 90 segundos para batch (mais que individual)
         async with asyncio.timeout(90):
             
+            # Determinar qual modelo judge usar para todo o batch
+            judge_model_id = request.comparisons[0].judge_model or models_loader.get_default_model()
+            logger.info(f"🔍 [API-BATCH] Modelo judge selecionado: {judge_model_id}")
+            
             # Executar processamento batch usando workflow com controle de concorrência
             logger.info(f"🚀 [API-BATCH] Iniciando processamento paralelo...")
             batch_results = await batch_judge_processing(
                 comparisons=request.comparisons,
-                max_concurrent=10  # Limite de 10 requisições concorrentes
+                max_concurrent=10,  # Limite de 10 requisições concorrentes
+                judge_model_id=judge_model_id
             )
             
             # Calcular estatísticas de performance
@@ -140,7 +151,8 @@ async def compare_models_batch(request: BatchCompareRequest):
                 model_a_name=comparison.model_a_name,
                 model_b_name=comparison.model_b_name,
                 better_response=f"TIMEOUT - Excedeu 90s",
-                judge_reasoning=f"O processamento batch foi interrompido por timeout após {elapsed_time:.2f}s"
+                judge_reasoning=f"O processamento batch foi interrompido por timeout após {elapsed_time:.2f}s",
+                judge_model_used=judge_model_id
             ))
         
         return BatchComparisonResponse(
@@ -168,6 +180,7 @@ async def compare_models_batch(request: BatchCompareRequest):
         
         # Retornar resultados de erro para todas as comparações
         error_results = []
+        judge_model_id = request.comparisons[0].judge_model or models_loader.get_default_model()
         for comparison in request.comparisons:
             error_results.append(BatchComparisonResult(
                 input=comparison.input,
@@ -176,7 +189,8 @@ async def compare_models_batch(request: BatchCompareRequest):
                 model_a_name=comparison.model_a_name,
                 model_b_name=comparison.model_b_name,
                 better_response=f"ERRO - {error_type}",
-                judge_reasoning=f"Falha inesperada durante processamento batch: {str(e)}"
+                judge_reasoning=f"Falha inesperada durante processamento batch: {str(e)}",
+                judge_model_used=judge_model_id
             ))
         
         return BatchComparisonResponse(
