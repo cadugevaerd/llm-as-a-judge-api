@@ -1,49 +1,21 @@
-# Multi-stage build para otimização
-FROM python:3.13-slim as builder
+# Use Python 3.13 slim image for ARM64
+FROM --platform=linux/arm64 python:3.13-slim
 
-# Instalar uv para gerenciamento de dependências
-RUN pip install --no-cache-dir uv
+# Install uv for ARM64
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Configurar diretório de trabalho
+# Change the working directory to `/app`
 WORKDIR /app
 
-# Copiar arquivos de configuração
-COPY pyproject.toml uv.lock ./
+# Copy the lockfile and pyproject.toml into the image
+COPY uv.lock pyproject.toml ./
 
-# Instalar dependências
-RUN uv sync --frozen --no-dev
-
-# Stage de produção
-FROM python:3.13-slim
-
-# Criar usuário não-root para segurança
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
-# Instalar uv
-RUN pip install --no-cache-dir uv
-
-# Configurar diretório de trabalho
-WORKDIR /app
-
-# Copiar ambiente virtual do builder
-COPY --from=builder /app/.venv /app/.venv
-
-# Copiar código fonte
+# Copy source code
 COPY src/ ./src/
 
-# Configurar PATH para usar o ambiente virtual
-ENV PATH="/app/.venv/bin:$PATH"
+# Install dependencies
+RUN uv sync --frozen --no-cache
 
-# Configurar usuário não-root
-RUN chown -R appuser:appuser /app
-USER appuser
-
-# Expor porta
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')" || exit 1
-
-# Comando de inicialização
-CMD ["uvicorn", "laaj.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the FastAPI application by default
+# Note: "app.main:app" should match your project structure
+CMD ["/app/.venv/bin/fastapi", "run", "src/laaj/api/main.py", "--port", "8000", "--host", "0.0.0.0"]

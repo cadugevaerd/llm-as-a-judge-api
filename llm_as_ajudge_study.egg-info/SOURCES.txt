@@ -1,7 +1,0 @@
-README.md
-pyproject.toml
-llm_as_ajudge_study.egg-info/PKG-INFO
-llm_as_ajudge_study.egg-info/SOURCES.txt
-llm_as_ajudge_study.egg-info/dependency_links.txt
-llm_as_ajudge_study.egg-info/requires.txt
-llm_as_ajudge_study.egg-info/top_level.txt

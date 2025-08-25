@@ -57,3 +57,7 @@ __pycache__/
 package-lock.json
 yarn.lock
 poetry.lock
+*llm_as_ajudge_study.egg-info/
+
+# Notebooks
+*.ipynb

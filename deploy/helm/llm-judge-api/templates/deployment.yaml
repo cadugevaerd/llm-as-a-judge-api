@@ -44,6 +44,20 @@ spec:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
+          env:
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "llm-judge-api.fullname" . }}-secret
+                  key: OPENROUTER_API_KEY
+            - name: LANGSMITH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "llm-judge-api.fullname" . }}-secret
+                  key: LANGSMITH_API_KEY
+          envFrom:
+            - configMapRef:
+                name: {{ include "llm-judge-api.fullname" . }}-config
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- with .Values.volumeMounts }}
