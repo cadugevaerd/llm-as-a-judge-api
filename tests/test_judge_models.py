@@ -41,7 +41,10 @@ MODELS_TO_TEST = [
     "mistral-medium-latest",
     "mistral-small-latest",
     "x-ai/grok-4",
-    "moonshotai/kimi-k2"
+    "x-ai/grok-code-fast-1",
+    "moonshotai/kimi-k2",
+    "ai21/jamba-mini-1.7",
+    "ai21/jamba-large-1.7"
 ]
 
 # Dados de teste - Rodada 1 (Complexidade Média)
